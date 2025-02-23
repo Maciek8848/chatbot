@@ -9,6 +9,7 @@ public class LMStudioChatbot {
     private static final String API_URL = "http://127.0.0.1:1234/v1/chat/completions";
     private static final String MODEL_NAME = "llama-3.2-1b-instruct"; // Zmień na swój model
     private static final int TIMEOUT = 10000; // 10 sekund timeout
+    private static final int MAX_HISTORY = 5; // Ogranicz historię chatu do 5 wiadomości
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -28,12 +29,19 @@ public class LMStudioChatbot {
 
             messages.add(String.format("{\"role\": \"user\", \"content\": \"%s\"}", escapeJson(userInput)));
 
+            // Ogranicz historię chatu
+            if (messages.size() > MAX_HISTORY) {
+                messages = messages.subList(messages.size() - MAX_HISTORY, messages.size());
+            }
+
             String response = sendRequest(messages);
             if (response != null) {
                 System.out.println("Chatbot: " + response);
                 messages.add(String.format("{\"role\": \"assistant\", \"content\": \"%s\"}", escapeJson(response)));
             } else {
-                System.out.println("Error: No response from chatbot.");
+                System.out.println("Error: No response from chatbot. Resetting chat history...");
+                messages.clear();
+                messages.add("{\"role\": \"system\", \"content\": \"You are a helpful assistant.\"}");
             }
         }
         scanner.close();
@@ -51,7 +59,7 @@ public class LMStudioChatbot {
 
             String messagesJson = "[" + String.join(",", messages) + "]";
             String requestBody = String.format(
-                "{\"model\": \"%s\", \"messages\": %s, \"temperature\": 0.7}",
+                "{\"model\": \"%s\", \"messages\": %s, \"temperature\": 0.7, \"max_tokens\": 1000}",
                 MODEL_NAME, messagesJson
             );
 
